@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// MODELOS DE AUTENTICAÇÃO E PERMISSÕES 
+// ==========================================
+
+// Modelo para os Cargos
+// A empresa poderá criar, editar e deletar cargos.
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      String  
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users     User[]   
+
+  accessLevel   AccessLevel @relation(fields: [accessLevelId], references: [id])
+  accessLevelId Int       
+
+  @@unique([name, companyId])
+}
+
+// Modelo para os Setores
+// A empresa também poderá gerenciar os setores.
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String  
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users     User[]   
+
+  @@unique([name, companyId])
+}
+
+// Modelo para os Níveis de Acesso
+model AccessLevel {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique 
+  description String?
+  roles       Role[]   
+  permissions Permission[] 
+}
+
+// Modelo para as Permissões
+model Permission {
+  id            Int      @id @default(autoincrement())
+  action        String   @unique 
+  description   String?
+  accessLevels  AccessLevel[]
+}
+
+
+// ==========================================
+// MODELOS PRINCIPAIS
+// ==========================================
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+
+  users      User[]
+  roles      Role[]       
+  departments Department[] 
+  posts      Post[]
+  events     Event[]
+  tags       Tag[]
+  questions  PulseQuestion[]
+}
+
+model User {
+  id              Int      @id @default(autoincrement())
+  name            String
+  email           String   @unique
+  password_hash   String
+  avatar_initials String?
+  avatar_url      String?
+  join_date       DateTime?
+  bio             String?
+  is_online       Boolean  @default(false)
+  last_seen       DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId Int
+  
+  role       Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  roleId     Int?
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  departmentId Int?
+
+  // Relações não alteradas
+  posts           Post[]          @relation("AuthoredPosts")
+  comments        Comment[]
+  likes           PostLike[]
+  organized_events Event[]        @relation("OrganizedEvents")
+  attended_events  Event[]        @relation("EventParticipants")
+  kudos_received  Post[]          @relation("KudosReceived")
+  pulse_responses PulseResponse[]
+}
+
+
+enum PostType {
+  SOCIAL
+  KUDOS
+  ANNOUNCEMENT
+  EVENT
+}
+
+model Post {
+  id                Int       @id @default(autoincrement())
+  content           String
+  type              PostType
+  createdAt         DateTime  @default(now())
+  author            User      @relation("AuthoredPosts", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId          Int
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId         Int
+  kudos_target_user User?     @relation("KudosReceived", fields: [kudosTargetUserId], references: [id], onDelete: SetNull)
+  kudosTargetUserId Int?
+  event             Event?    @relation("AnnouncementPost")
+  images            PostImage[]
+  tags              Tag[]
+  likes             PostLike[]
+  comments          Comment[]
+}
+
+model PostImage {
+  id      Int    @id @default(autoincrement())
+  url     String
+  post    Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId  Int
+}
+
+model Tag {
+  id        Int    @id @default(autoincrement())
+  name      String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId Int
+  posts     Post[]
+  @@unique([companyId, name])
+}
+
+model PostLike {
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    Int
+  @@id([userId, postId])
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  Int
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    Int
+}
+
+model Event {
+  id                 Int       @id @default(autoincrement())
+  title              String
+  description        String?
+  event_date         DateTime
+  duration           String?
+  location           String?
+  createdAt          DateTime  @default(now())
+  organizer          User      @relation("OrganizedEvents", fields: [organizerId], references: [id], onDelete: Cascade)
+  organizerId        Int
+  company            Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId          Int
+  announcement_post  Post?     @relation("AnnouncementPost", fields: [announcementPostId], references: [id], onDelete: SetNull)
+  announcementPostId Int?      @unique
+  participants       User[]    @relation("EventParticipants")
+}
+
+model PulseQuestion {
+  id            Int      @id @default(autoincrement())
+  question_text String
+  is_active     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     Int
+  responses     PulseResponse[]
+}
+
+model PulseResponse {
+  id            Int           @id @default(autoincrement())
+  createdAt     DateTime      @default(now())
+  value_numeric Int?
+  value_text    String?
+  question      PulseQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId    Int
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        Int
+}
