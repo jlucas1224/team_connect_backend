@@ -105,6 +105,7 @@ Após a configuração, inicie o servidor em modo de desenvolvimento:
 
 ```bash
 npm start
+```
 
 ## Documentação da API
 
