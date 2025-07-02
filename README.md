@@ -23,7 +23,6 @@ Backend da plataforma TeamConnect, uma rede social corporativa projetada para ap
     - [Usuários](#usuários)
     - [Posts](#posts)
     - [Cargos (Roles)](#cargos-roles)
-7.  [Próximos Passos](#próximos-passos)
 
 ## Sobre o Projeto
 
