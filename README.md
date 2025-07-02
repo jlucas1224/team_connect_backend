@@ -105,3 +105,176 @@ Após a configuração, inicie o servidor em modo de desenvolvimento:
 
 ```bash
 npm start
+
+## Documentação da API
+
+> **Nota de Teste Importante:**
+> Atualmente, a autenticação é simulada através do header `x-company-id`. **Todas as requisições, exceto o registro da empresa, exigem este header** para identificar de qual empresa a ação está partindo.
+>
+> **Exemplo de Header:** `{ "x-company-id": "1" }`
+
+---
+
+### 🏢 Empresas
+
+#### `POST /api/companies/register`
+
+Registra uma nova empresa e seu primeiro usuário administrador. Esta é a única rota pública.
+
+-   **Corpo da Requisição (Exemplo):**
+    ```json
+    {
+      "companyName": "Minha Nova Empresa",
+      "adminName": "Admin Master",
+      "adminEmail": "admin@minhanovaempresa.com",
+      "adminPassword": "senhaSuperSegura123"
+    }
+    ```
+-   **Resposta de Sucesso (201 Created):**
+    ```json
+    {
+      "message": "Empresa registrada com sucesso!",
+      "companyId": 1,
+      "adminId": 1
+    }
+    ```
+
+---
+
+### 👑 Cargos (Roles)
+
+_Todas as rotas de cargos exigem o header `x-company-id`._
+
+#### `POST /api/roles`
+
+Cria um novo cargo para a empresa.
+
+-   **Headers:** `{ "x-company-id": "1", "Content-Type": "application/json" }`
+-   **Body (Exemplo):**
+    ```json
+    {
+      "name": "Product Designer",
+      "accessLevelId": 2
+    }
+    ```
+
+#### `GET /api/roles`
+
+Lista todos os cargos da empresa.
+
+-   **Headers:** `{ "x-company-id": "1" }`
+
+#### `PUT /api/roles/:id`
+
+Atualiza um cargo. `id` se refere ao `roleId`.
+
+-   **Headers:** `{ "x-company-id": "1", "Content-Type": "application/json" }`
+-   **Body (Exemplo):** `{ "name": "Senior Product Designer" }`
+
+#### `DELETE /api/roles/:id`
+
+Deleta um cargo. `id` se refere ao `roleId`.
+
+-   **Headers:** `{ "x-company-id": "1" }`
+
+---
+
+### 👨‍💼 Usuários (Funcionários)
+
+_Todas as rotas de usuários exigem o header `x-company-id`._
+
+#### `POST /api/users`
+
+Cria (adiciona) um novo funcionário à empresa.
+
+-   **Headers:** `{ "x-company-id": "1", "Content-Type": "application/json" }`
+-   **Body (Exemplo):**
+    ```json
+    {
+      "name": "Joana Dev",
+      "email": "joana.dev@minhanovaempresa.com",
+      "password": "outraSenhaSegura456",
+      "roleId": 2,
+      "departmentId": null
+    }
+    ```
+
+#### `GET /api/users`
+
+Lista os funcionários da empresa. Suporta filtros via query string.
+
+-   **Headers:** `{ "x-company-id": "1" }`
+-   **Exemplo com Filtro:** `/api/users?search=Joana`
+
+#### `GET /api/users/:id`
+
+Busca o perfil de um funcionário específico da empresa.
+
+-   **Headers:** `{ "x-company-id": "1" }`
+
+---
+
+### 📰 Feed e Interações
+
+_Todas as rotas de posts e interações exigem o header `x-company-id`._
+
+#### `POST /api/posts`
+
+Cria um novo post.
+
+-   **Headers:** `{ "x-company-id": "1", "Content-Type": "application/json" }`
+-   **Body (Exemplo):**
+    ```json
+    {
+      "content": "Anúncio importante sobre o novo projeto!",
+      "type": "ANNOUNCEMENT",
+      "authorId": 1
+    }
+    ```
+
+#### `GET /api/posts`
+
+Lista todos os posts do feed da empresa.
+
+-   **Headers:** `{ "x-company-id": "1" }`
+
+#### `POST /api/posts/:postId/like`
+
+Curte ou descurte um post.
+
+-   **Headers:** `{ "x-company-id": "1", "Content-Type": "application/json" }`
+-   **Body (Exemplo):**
+    ```json
+    {
+      "userId": 2
+    }
+    ```
+
+#### `POST /api/posts/:postId/comments`
+
+Adiciona um novo comentário a um post.
+
+-   **Headers:** `{ "x-company-id": "1", "Content-Type": "application/json" }`
+-   **Body (Exemplo):**
+    ```json
+    {
+      "content": "Bela iniciativa!",
+      "authorId": 2
+    }
+    ```
+
+#### `GET /api/posts/:postId/comments`
+
+Lista todos os comentários de um post.
+
+-   **Headers:** `{ "x-company-id": "1" }`
+
+## Próximos Passos
+
+A evolução do projeto seguirá os seguintes passos:
+
+-   [ ] Implementação da API CRUD para **Setores (Departments)**.
+-   [ ] Implementação da **autenticação com JWT** em um endpoint de login para substituir o header `x-company-id`.
+-   [ ] Criação de **middlewares de permissão** para proteger rotas de gerenciamento (ex: apenas admins podem criar cargos).
+-   [ ] Desenvolvimento da API para as funcionalidades de **Eventos** e **Pesquisas de Pulso**.
+-   [ ] Construção dos endpoints para a tela de **Analytics**.

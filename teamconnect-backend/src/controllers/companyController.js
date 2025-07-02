@@ -8,12 +8,10 @@ const registerCompany = async (req, res) => {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Criar a empresa
       const company = await tx.company.create({
         data: { name: companyName },
       });
 
-      // 2. Buscar o Nível de Acesso de "Admin" que criamos no seed
       const adminAccessLevel = await tx.accessLevel.findUnique({
         where: { name: 'Admin' },
       });
@@ -21,7 +19,6 @@ const registerCompany = async (req, res) => {
         throw new Error("Nível de acesso 'Admin' não encontrado. Rode o 'db seed'.");
       }
 
-      // 3. Criar o Cargo de "Administrador" para esta empresa
       const adminRole = await tx.role.create({
         data: {
           name: 'Administrador',
@@ -30,11 +27,9 @@ const registerCompany = async (req, res) => {
         },
       });
 
-      // 4. Hashear a senha do administrador
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(adminPassword, salt);
 
-      // 5. Criar o usuário administrador
       const adminUser = await tx.user.create({
         data: {
           name: adminName,

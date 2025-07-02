@@ -1,14 +1,21 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Função para buscar todos os posts
+const getCompanyIdFromHeader = (req) => {
+    return parseInt(req.headers['x-company-id']);
+};
+
 const getAllPosts = async (req, res) => {
+    const companyId = getCompanyIdFromHeader(req);
+    if (!companyId) return res.status(400).json({ error: "Header 'x-company-id' é obrigatório." });
+
     try {
         const posts = await prisma.post.findMany({
+            where: { companyId },
             orderBy: { createdAt: 'desc' },
             include: {
                 author: {
-                    select: { id: true, name: true, avatar_initials: true, department: true }
+                    select: { id: true, name: true, avatar_initials: true, department: { select: { name: true } } }
                 },
                 tags: { select: { name: true } },
                 _count: {
@@ -22,13 +29,16 @@ const getAllPosts = async (req, res) => {
     }
 };
 
-// Função para criar um novo post
 const createPost = async (req, res) => {
-    try {
-        const { content, type, authorId, companyId, tags } = req.body;
+    const companyId = getCompanyIdFromHeader(req);
+    if (!companyId) return res.status(400).json({ error: "Header 'x-company-id' é obrigatório." });
 
-        if (!authorId || !companyId) {
-            return res.status(400).json({ error: "authorId e companyId são obrigatórios para o teste." })
+    const { content, type, authorId, tags } = req.body;
+
+    try {
+        const author = await prisma.user.findFirst({ where: { id: authorId, companyId } });
+        if (!author) {
+            return res.status(403).json({ error: "O autor do post não pertence a esta empresa." });
         }
 
         const newPost = await prisma.post.create({
@@ -51,24 +61,25 @@ const createPost = async (req, res) => {
     }
 };
 
-// Curtir ou Descurtir um post
 const toggleLike = async (req, res) => {
-    try {
-        const { postId } = req.params; 
-        const { userId } = req.body;    
+    const companyId = getCompanyIdFromHeader(req);
+    if (!companyId) return res.status(400).json({ error: "Header 'x-company-id' é obrigatório." });
 
-        if (!userId) {
-            return res.status(400).json({ error: "userId é obrigatório." });
+    try {
+        const { postId } = req.params;
+        const { userId } = req.body;
+        if (!userId) return res.status(400).json({ error: "userId é obrigatório." });
+
+        const post = await prisma.post.findFirst({
+            where: { id: parseInt(postId), companyId }
+        });
+
+        if (!post) {
+            return res.status(404).json({ error: "Post não encontrado nesta empresa." });
         }
 
-        const likeId = {
-            userId: parseInt(userId),
-            postId: parseInt(postId)
-        };
-
-        const existingLike = await prisma.postLike.findUnique({
-            where: { userId_postId: likeId }
-        });
+        const likeId = { userId: parseInt(userId), postId: parseInt(postId) };
+        const existingLike = await prisma.postLike.findUnique({ where: { userId_postId: likeId } });
 
         if (existingLike) {
             await prisma.postLike.delete({ where: { userId_postId: likeId } });
@@ -83,14 +94,21 @@ const toggleLike = async (req, res) => {
     }
 };
 
-// Criar um comentário
 const createComment = async (req, res) => {
+    const companyId = getCompanyIdFromHeader(req);
+    if (!companyId) return res.status(400).json({ error: "Header 'x-company-id' é obrigatório." });
+
     try {
         const { postId } = req.params;
         const { content, authorId } = req.body;
+        if (!content || !authorId) return res.status(400).json({ error: "content e authorId são obrigatórios." });
+        
+        const post = await prisma.post.findFirst({
+            where: { id: parseInt(postId), companyId }
+        });
 
-        if (!content || !authorId) {
-            return res.status(400).json({ error: "content e authorId são obrigatórios." });
+        if (!post) {
+            return res.status(404).json({ error: "Post não encontrado nesta empresa." });
         }
 
         const newComment = await prisma.comment.create({
@@ -107,20 +125,23 @@ const createComment = async (req, res) => {
     }
 };
 
-// Buscar comentários de um post
 const getCommentsForPost = async (req, res) => {
+    const companyId = getCompanyIdFromHeader(req);
+    if (!companyId) return res.status(400).json({ error: "Header 'x-company-id' é obrigatório." });
+
     try {
         const { postId } = req.params;
 
         const comments = await prisma.comment.findMany({
             where: {
-                postId: parseInt(postId)
+                post: {
+                    id: parseInt(postId),
+                    companyId: companyId
+                }
             },
-            orderBy: {
-                createdAt: 'asc' 
-            },
+            orderBy: { createdAt: 'asc' },
             include: {
-                author: { 
+                author: {
                     select: { id: true, name: true, avatar_initials: true }
                 }
             }
