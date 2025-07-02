@@ -23,7 +23,6 @@ Backend da plataforma TeamConnect, uma rede social corporativa projetada para ap
     - [Usuários](#usuários)
     - [Posts](#posts)
     - [Cargos (Roles)](#cargos-roles)
-7.  [Próximos Passos](#próximos-passos)
 
 ## Sobre o Projeto
 
@@ -269,13 +268,3 @@ Adiciona um novo comentário a um post.
 Lista todos os comentários de um post.
 
 -   **Headers:** `{ "x-company-id": "1" }`
-
-## Próximos Passos
-
-A evolução do projeto seguirá os seguintes passos:
-
--   [ ] Implementação da API CRUD para **Setores (Departments)**.
--   [ ] Implementação da **autenticação com JWT** em um endpoint de login para substituir o header `x-company-id`.
--   [ ] Criação de **middlewares de permissão** para proteger rotas de gerenciamento (ex: apenas admins podem criar cargos).
--   [ ] Desenvolvimento da API para as funcionalidades de **Eventos** e **Pesquisas de Pulso**.
--   [ ] Construção dos endpoints para a tela de **Analytics**.
