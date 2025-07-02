@@ -6,24 +6,43 @@ const getCompanyIdFromHeader = (req) => {
 };
 
 const getAllPosts = async (req, res) => {
-    const companyId = getCompanyIdFromHeader(req);
+    const companyId = parseInt(req.headers['x-company-id']);
     if (!companyId) return res.status(400).json({ error: "Header 'x-company-id' é obrigatório." });
 
     try {
-        const posts = await prisma.post.findMany({
-            where: { companyId },
-            orderBy: { createdAt: 'desc' },
-            include: {
-                author: {
-                    select: { id: true, name: true, avatar_initials: true, department: { select: { name: true } } }
-                },
-                tags: { select: { name: true } },
-                _count: {
-                    select: { likes: true, comments: true }
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const skip = (page - 1) * limit;
+
+        const [posts, totalPosts] = await prisma.$transaction([
+            prisma.post.findMany({
+                where: { companyId },
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                skip: skip,
+                include: {
+                    author: {
+                        select: { id: true, name: true, avatar_initials: true, department: { select: { name: true } } }
+                    },
+                    tags: { select: { name: true } },
+                    _count: {
+                        select: { likes: true, comments: true }
+                    }
                 }
+            }),
+            prisma.post.count({ where: { companyId } })
+        ]);
+
+        res.status(200).json({
+            data: posts,
+            pagination: {
+                totalPosts,
+                totalPages: Math.ceil(totalPosts / limit),
+                currentPage: page,
+                pageSize: limit
             }
         });
-        res.status(200).json(posts);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar posts', details: error.message });
     }
